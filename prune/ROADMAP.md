@@ -2,11 +2,13 @@
 
 ## Current State
 
-- Product status: Major `01` shipped — the Exchange loop (take a story / leave a story) runs locally in
-  a browser. Software-first; hardware later.
+- Product status: Majors `01`–`02` shipped — the Exchange loop *and* the forgetting engine. The box is
+  now bounded: it stays full and fresh on its own, composting the least-kept entry when a new one
+  arrives, and a "keep" can buy a story more life. Software-first; hardware later.
 - Architecture status: Stack locked — Python stdlib `http.server` + one hand-written page, zero
-  dependencies, no build step. Storage sits behind a `Store` interface (`src/store/`) so the ESP32
-  LittleFS store and the forgetting engine slot in behind the same shape.
+  dependencies, no build step. Storage sits behind a `Store` interface (`src/store/`); the forgetting
+  *policy* is pure in `src/decay.py`, orchestrated by `src/box.py` — so the ESP32 LittleFS store (05)
+  slots in behind the same shape by swapping the capacity predicate to a byte budget.
 - Top risks:
   - Abuse on an open, anonymous, public node with no cloud and no moderator-on-call. This is *the*
     design problem, not a side issue.
@@ -26,8 +28,8 @@
 ## Major Queue
 
 1. ~~`01` — Local Exchange server: the take-a-story / leave-a-story core, served to a browser.~~ **Shipped.**
-2. `02` — The forgetting engine: capacity + age + reader-signal decay (the memory logic, in proportion). **← next**
-3. `03` — The Murmur view: the ambient portrait of the block.
+2. ~~`02` — The forgetting engine: capacity + age + reader-signal decay (the memory logic, in proportion).~~ **Shipped.**
+3. `03` — The Murmur view: the ambient portrait of the block. **← next**
 4. `04` — Keeper surface + prompt/theming: pruning, and the prompt-makes-the-box system.
 5. `05` — ESP32 embodiment: open AP, captive portal, LittleFS persistence, OTA.
 

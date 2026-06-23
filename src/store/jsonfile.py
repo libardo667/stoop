@@ -15,13 +15,13 @@ class JsonFileStore(Store):
 
     Writes are atomic (temp file + os.replace) so a crash mid-write can't corrupt
     the box. This is the reference behavior the ESP32/LittleFS store (major 05)
-    must reproduce.
+    must reproduce — including `remove`/`update`, which the forgetting engine needs.
     """
 
     def __init__(self, path: str):
         self._path = path
         self._lock = threading.Lock()
-        self._entries: "list[Entry]" = []
+        self._entries: "list[Entry]" = []  # oldest-first (append order)
         self._load()
 
     def _load(self) -> None:
@@ -45,9 +45,9 @@ class JsonFileStore(Store):
             if os.path.exists(tmp):
                 os.remove(tmp)
 
-    def add(self, text: str) -> Entry:
+    def add(self, text: str, ts: "float | None" = None) -> Entry:
         with self._lock:
-            entry = Entry(id=uuid.uuid4().hex, text=text, ts=time.time())
+            entry = Entry(id=uuid.uuid4().hex, text=text, ts=time.time() if ts is None else ts)
             self._entries.append(entry)
             self._persist()
             return entry
@@ -55,3 +55,28 @@ class JsonFileStore(Store):
     def list(self) -> "list[Entry]":
         with self._lock:
             return list(reversed(self._entries))
+
+    def get(self, entry_id: str) -> "Entry | None":
+        with self._lock:
+            return next((e for e in self._entries if e.id == entry_id), None)
+
+    def remove(self, entry_id: str) -> "Entry | None":
+        with self._lock:
+            for i, e in enumerate(self._entries):
+                if e.id == entry_id:
+                    victim = self._entries.pop(i)
+                    self._persist()
+                    return victim
+            return None
+
+    def update(self, entry: Entry) -> None:
+        with self._lock:
+            for i, e in enumerate(self._entries):
+                if e.id == entry.id:
+                    self._entries[i] = entry
+                    self._persist()
+                    return
+
+    def count(self) -> int:
+        with self._lock:
+            return len(self._entries)

@@ -26,6 +26,20 @@ ENTRY_MAX_LEN = 280
 # over a 280-char entry's JSON envelope (even with multibyte UTF-8), nothing more.
 MAX_BODY_BYTES = 4096
 
+# --- the forgetting engine (major 02) ---
+# The box is small and always full, so leaving something pushes the least-loved
+# thing out. (Entry-count ceiling here; the ESP32 store swaps in a byte budget.)
+MAX_ENTRIES = 50
+
+# Decay weights — the proportion is meant to be tuned (see src/decay.py).
+DECAY_AGE_HORIZON_SECONDS = 14 * 24 * 60 * 60  # recency fades to 0 over ~2 weeks
+DECAY_PRESSURE_SQUEEZE = 0.6                    # a full box forgets ~2.5x faster
+DECAY_W_RECENCY = 1.0                           # freshness weight
+DECAY_W_SECONDS = 0.5                           # each "keep" ~ half a fresh entry
+
+# Evicted entries compost here: append-only, local, gitignored under prune/history/.
+ARCHIVE_FILE = "prune/history/evicted-entries.jsonl"
+
 # Laptop store location (gitignored). The ESP32 store (major 05) satisfies the
 # same Store contract against LittleFS instead of a file.
 DATA_FILE = "data/entries.json"

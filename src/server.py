@@ -6,6 +6,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from . import config
+from .archive import JsonlArchive
+from .box import Box
+from .decay import DecayWeights
 from .store import JsonFileStore
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -37,7 +40,7 @@ def validate_text(raw) -> str:
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "Stoop/0.1"
-    store: JsonFileStore  # set as a class attr on the server's handler
+    box: Box  # set as a class attr on the server's handler
 
     # Drop a connection that goes quiet mid-request, so a slow/stalled client
     # (deliberate or not) can't hold a worker thread open indefinitely.
@@ -66,12 +69,40 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _read_body(self) -> "str | None":
+        """Read the request body within the size cap. Returns the decoded text,
+        or None if rejected (an error response was already sent)."""
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            self._send_json({"error": "bad request"}, status=400)
+            return None
+        if length < 0 or length > config.MAX_BODY_BYTES:
+            # Reject before allocating: never read an oversized body into memory.
+            self._send_json({"error": "too much at once"}, status=413)
+            return None
+        # errors="replace": a malformed-UTF-8 body becomes harmless text rather
+        # than crashing the handler.
+        return self.rfile.read(length).decode("utf-8", errors="replace") if length else ""
+
+    def _field(self, raw: str, name: str):
+        """Pull one field from a JSON or x-www-form-urlencoded body."""
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip()
+        if ctype == "application/json":
+            try:
+                data = json.loads(raw) if raw else {}
+            except json.JSONDecodeError:
+                return None
+            return data.get(name) if isinstance(data, dict) else None
+        vals = parse_qs(raw).get(name)
+        return vals[0] if vals else None
+
     # --- routes ---
 
     def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path == "/entries":
-            entries = [e.to_dict() for e in self.store.list()]
+            entries = [e.to_dict() for e in self.box.read()]
             self._send_json({"prompt": config.PROMPT, "entries": entries})
             return
         if path in STATIC:
@@ -80,54 +111,55 @@ class Handler(BaseHTTPRequestHandler):
         self.send_error(404)
 
     def do_POST(self) -> None:
-        if urlparse(self.path).path != "/entries":
+        path = urlparse(self.path).path
+        if path not in ("/entries", "/second"):
             self.send_error(404)
             return
-        try:
-            length = int(self.headers.get("Content-Length") or 0)
-        except ValueError:
-            self._send_json({"error": "bad request"}, status=400)
+        raw = self._read_body()
+        if raw is None:
             return
-        if length < 0 or length > config.MAX_BODY_BYTES:
-            # Reject before allocating: never read an oversized body into memory.
-            self._send_json({"error": "too much at once"}, status=413)
-            return
-        # errors="replace": a malformed-UTF-8 body becomes harmless text and is
-        # caught by validate_text, rather than crashing the handler.
-        raw = self.rfile.read(length).decode("utf-8", errors="replace") if length else ""
-        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip()
 
-        text = None
-        if ctype == "application/json":
+        if path == "/entries":
             try:
-                text = (json.loads(raw) or {}).get("text")
-            except json.JSONDecodeError:
-                text = None
-        else:  # x-www-form-urlencoded fallback (works from a plain <form> too)
-            vals = parse_qs(raw).get("text")
-            text = vals[0] if vals else None
-
-        try:
-            clean = validate_text(text)
-        except ValueError as exc:
-            self._send_json({"error": str(exc)}, status=400)
-            return
-
-        entry = self.store.add(clean)
-        self._send_json(entry.to_dict(), status=201)
+                clean = validate_text(self._field(raw, "text"))
+            except ValueError as exc:
+                self._send_json({"error": str(exc)}, status=400)
+                return
+            entry = self.box.leave(clean)
+            self._send_json(entry.to_dict(), status=201)
+        else:  # /second — buy an entry more life
+            entry_id = self._field(raw, "id")
+            updated = self.box.second(entry_id) if isinstance(entry_id, str) else None
+            if updated is None:
+                self._send_json({"error": "no such entry"}, status=404)
+            else:
+                self._send_json(updated.to_dict(), status=200)
 
     def log_message(self, fmt, *args) -> None:  # noqa: ARG002 - stdlib signature
         # One quiet line per request instead of the noisy default.
         print(f"  {self.command} {self.path}")
 
 
-def make_server():
-    """Build the server and its store. Returned separately so tests can drive
-    the store directly without a socket."""
+def build_box() -> Box:
+    """Wire the store, the decay weights, and the compost archive into a Box."""
     store = JsonFileStore(os.path.join(ROOT, config.DATA_FILE))
+    archive = JsonlArchive(os.path.join(ROOT, config.ARCHIVE_FILE))
+    weights = DecayWeights(
+        age_horizon_seconds=config.DECAY_AGE_HORIZON_SECONDS,
+        pressure_squeeze=config.DECAY_PRESSURE_SQUEEZE,
+        w_recency=config.DECAY_W_RECENCY,
+        w_seconds=config.DECAY_W_SECONDS,
+    )
+    return Box(store, capacity=config.MAX_ENTRIES, weights=weights, archive=archive)
+
+
+def make_server():
+    """Build the server and its Box. Returned separately so tests can drive the
+    Box directly without a socket."""
+    box = build_box()
     httpd = ThreadingHTTPServer((config.HOST, config.PORT), Handler)
-    Handler.store = store
-    return httpd, store
+    Handler.box = box
+    return httpd, box
 
 
 def main() -> None:

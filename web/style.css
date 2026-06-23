@@ -31,9 +31,31 @@ header h1 { margin: 0 0 .15rem; font-size: 1.5rem; letter-spacing: .02em; }
   border-radius: .6rem;
   padding: .8rem .9rem;
 }
-.entry .body { margin: 0 0 .35rem; white-space: pre-wrap; overflow-wrap: anywhere; }
-.entry .meta { margin: 0; font-size: .8rem; color: var(--muted); }
+.entry .body { margin: 0 0 .45rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.entry .meta {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  font-size: .8rem;
+  color: var(--muted);
+}
+.keep {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--accent);
+  padding: .15rem .55rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: .78rem;
+  cursor: pointer;
+}
+.keep:hover { background: var(--card); border-color: var(--accent); }
+.keep:active { transform: translateY(1px); }
 .empty { color: var(--muted); font-style: italic; }
+.hint { margin: 1.1rem 0 0; font-size: .82rem; color: var(--muted); line-height: 1.45; }
+.hint em { color: var(--accent); font-style: normal; }
 
 .compose { margin-top: 1.5rem; border-top: 1px dashed var(--line); padding-top: 1.1rem; }
 .nudge { margin: 0 0 .5rem; font-weight: 600; }

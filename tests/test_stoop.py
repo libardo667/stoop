@@ -1,4 +1,5 @@
-"""Major 01 behavior: the store contract and the entry gate.
+"""Stoop behavior tests (majors 01-02): the store contract, the entry gate, the
+server guards, and the forgetting engine.
 
 Run from the repo root:
     python3 -m unittest discover -t . -s tests
@@ -17,9 +18,39 @@ from http.server import ThreadingHTTPServer
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import config  # noqa: E402
+from src.archive import JsonlArchive  # noqa: E402
+from src.box import Box  # noqa: E402
+from src.decay import DecayWeights, keep_score, pick_eviction  # noqa: E402
 from src.server import Handler, validate_text  # noqa: E402
-from src.store import JsonFileStore  # noqa: E402
+from src.store import Entry, JsonFileStore  # noqa: E402
 
+
+# --- helpers ---
+
+def _weights(horizon=100.0, squeeze=0.0, w_recency=1.0, w_seconds=1.0):
+    return DecayWeights(
+        age_horizon_seconds=horizon,
+        pressure_squeeze=squeeze,
+        w_recency=w_recency,
+        w_seconds=w_seconds,
+    )
+
+
+class FakeClock:
+    """A clock we advance by hand, so aging is deterministic without sleeping."""
+
+    def __init__(self, t=0.0):
+        self.t = t
+
+    def __call__(self):
+        return self.t
+
+
+def _temp_store():
+    return JsonFileStore(os.path.join(tempfile.mkdtemp(), "entries.json"))
+
+
+# --- store ---
 
 class StoreTests(unittest.TestCase):
     def setUp(self):
@@ -42,6 +73,17 @@ class StoreTests(unittest.TestCase):
     def test_missing_file_is_empty(self):
         self.assertEqual(JsonFileStore(self.path).list(), [])
 
+    def test_remove_and_update(self):
+        store = JsonFileStore(self.path)
+        e = store.add("x")
+        store.update(Entry(id=e.id, text=e.text, ts=e.ts, seconds=2))
+        self.assertEqual(store.get(e.id).seconds, 2)
+        self.assertEqual(store.remove(e.id).id, e.id)
+        self.assertIsNone(store.get(e.id))
+        self.assertEqual(store.count(), 0)
+
+
+# --- the entry gate ---
 
 class ValidateTests(unittest.TestCase):
     def test_rejects_empty_or_blank(self):
@@ -58,12 +100,106 @@ class ValidateTests(unittest.TestCase):
         self.assertEqual(validate_text("x" * config.ENTRY_MAX_LEN), "x" * config.ENTRY_MAX_LEN)
 
 
-class ServerBodyGuardTests(unittest.TestCase):
-    """The box runs on the street: a stranger must not be able to OOM it with a
-    giant POST. The body cap is enforced before the body is read."""
+# --- the forgetting policy (pure) ---
+
+class DecayTests(unittest.TestCase):
+    def _e(self, eid, ts, seconds=0):
+        return Entry(id=eid, text=eid, ts=ts, seconds=seconds)
+
+    def test_newer_scores_higher(self):
+        w = _weights()
+        older, newer = self._e("a", ts=0), self._e("b", ts=50)
+        self.assertGreater(keep_score(newer, 50, 0.0, w), keep_score(older, 50, 0.0, w))
+
+    def test_seconds_raise_score(self):
+        w = _weights()
+        plain, loved = self._e("a", ts=0), self._e("b", ts=0, seconds=3)
+        self.assertGreater(keep_score(loved, 0, 0.0, w), keep_score(plain, 0, 0.0, w))
+
+    def test_pressure_erodes_age_faster(self):
+        w = _weights(squeeze=0.6)
+        e = self._e("a", ts=0)
+        empty_box = keep_score(e, 40, 0.0, w)
+        full_box = keep_score(e, 40, 1.0, w)
+        self.assertGreater(empty_box, full_box)
+
+    def test_pick_eviction_is_lowest_then_oldest(self):
+        w = _weights()
+        entries = [self._e("old", ts=0), self._e("mid", ts=50), self._e("new", ts=90)]
+        self.assertEqual(pick_eviction(entries, 90, 0.0, w).id, "old")
+
+
+# --- the box: forgetting in motion ---
+
+class BoxTests(unittest.TestCase):
+    def setUp(self):
+        self.clock = FakeClock(0.0)
+        self.archive_path = os.path.join(tempfile.mkdtemp(), "evicted.jsonl")
+        self.archive = JsonlArchive(self.archive_path)
+
+    def _box(self, capacity, w=None):
+        return Box(
+            _temp_store(),
+            capacity=capacity,
+            weights=w or _weights(),
+            archive=self.archive,
+            clock=self.clock,
+        )
+
+    def test_capacity_is_never_exceeded(self):
+        box = self._box(capacity=3)
+        for i in range(10):
+            self.clock.t = i
+            box.leave(f"entry {i}")
+        self.assertEqual(len(box.read()), 3)
+
+    def test_oldest_unloved_is_composted(self):
+        box = self._box(capacity=3)
+        for i, name in enumerate(["a", "b", "c"]):
+            self.clock.t = i * 10
+            box.leave(name)
+        self.clock.t = 30
+        box.leave("d")
+        texts = [e.text for e in box.read()]
+        self.assertEqual(len(texts), 3)
+        self.assertNotIn("a", texts)  # oldest, unloved -> composted
+
+    def test_seconding_saves_the_oldest(self):
+        box = self._box(capacity=3)
+        first = None
+        for i, name in enumerate(["a", "b", "c"]):
+            self.clock.t = i * 10
+            e = box.leave(name)
+            if name == "a":
+                first = e
+        box.second(first.id)
+        box.second(first.id)  # two "keeps" buy it past the fresher, unloved ones
+        self.clock.t = 30
+        box.leave("d")
+        texts = [e.text for e in box.read()]
+        self.assertIn("a", texts)     # saved
+        self.assertNotIn("b", texts)  # next-least-kept composted instead
+
+    def test_evicted_entry_is_archived_not_destroyed(self):
+        box = self._box(capacity=1)
+        self.clock.t = 0
+        box.leave("ghost")
+        self.clock.t = 1
+        box.leave("living")
+        with open(self.archive_path, encoding="utf-8") as f:
+            rows = [json.loads(line) for line in f if line.strip()]
+        self.assertEqual([r["text"] for r in rows], ["ghost"])
+        self.assertEqual(rows[0]["reason"], "composted")
+
+
+# --- the server, end to end ---
+
+class ServerTests(unittest.TestCase):
+    """The box runs on the street: oversized POSTs are refused before allocation,
+    and the seconding route behaves."""
 
     def setUp(self):
-        Handler.store = JsonFileStore(os.path.join(tempfile.mkdtemp(), "entries.json"))
+        Handler.box = Box(_temp_store(), capacity=50, weights=_weights())
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self.port = self.httpd.server_address[1]
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
@@ -73,19 +209,34 @@ class ServerBodyGuardTests(unittest.TestCase):
         self.httpd.shutdown()
         self.httpd.server_close()
 
-    def _post(self, body: str) -> int:
+    def _post(self, path, body):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
-        conn.request("POST", "/entries", body=body, headers={"Content-Type": "application/json"})
-        status = conn.getresponse().status
+        conn.request("POST", path, body=body, headers={"Content-Type": "application/json"})
+        resp = conn.getresponse()
+        status, payload = resp.status, resp.read()
         conn.close()
-        return status
+        return status, payload
 
     def test_normal_post_accepted(self):
-        self.assertEqual(self._post(json.dumps({"text": "hello block"})), 201)
+        status, _ = self._post("/entries", json.dumps({"text": "hello block"}))
+        self.assertEqual(status, 201)
 
     def test_oversized_body_rejected_with_413(self):
         huge = json.dumps({"text": "x" * (config.MAX_BODY_BYTES + 1000)})
-        self.assertEqual(self._post(huge), 413)
+        status, _ = self._post("/entries", huge)
+        self.assertEqual(status, 413)
+
+    def test_second_unknown_id_404(self):
+        status, _ = self._post("/second", json.dumps({"id": "nope"}))
+        self.assertEqual(status, 404)
+
+    def test_second_existing_entry_increments(self):
+        status, payload = self._post("/entries", json.dumps({"text": "keepable"}))
+        self.assertEqual(status, 201)
+        eid = json.loads(payload)["id"]
+        status, payload = self._post("/second", json.dumps({"id": eid}))
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(payload)["seconds"], 1)
 
 
 if __name__ == "__main__":

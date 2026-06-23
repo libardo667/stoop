@@ -1,5 +1,10 @@
 # The forgetting engine: capacity, age, and reader signal decide what stays
 
+> **Status: Shipped (2026-06-23).** `src/decay.py` (pure scoring), `src/box.py` (orchestration),
+> `src/archive.py` (compost). Capacity is an entry count (`MAX_ENTRIES`) on the laptop; the LittleFS
+> store (major 05) swaps that predicate for a byte budget while reusing the same scoring/eviction.
+> `/second` endpoint + a "keep" affordance in the portal. 19 tests green.
+
 ## Problem
 
 A guestbook that only grows is not a Stoop. The magic of the physical exchanges — and the thing that
@@ -32,12 +37,12 @@ the local `history/` archive — never silently destroyed.
 
 ## Acceptance Criteria
 
-- [ ] Total storage never exceeds a configured ceiling; posting at capacity evicts the lowest-scoring
+- [x] Total storage never exceeds a configured ceiling; posting at capacity evicts the lowest-scoring
       entry.
-- [ ] Entry score combines age, capacity pressure, and seconds, with tunable weights.
-- [ ] An unattended instance stays full, fresh, and bounded with no manual deletion.
-- [ ] Evicted entries are archived locally, not destroyed.
-- [ ] Decay behavior is covered by deterministic tests.
+- [x] Entry score combines age, capacity pressure, and seconds, with tunable weights.
+- [x] An unattended instance stays full, fresh, and bounded with no manual deletion.
+- [x] Evicted entries are archived locally, not destroyed.
+- [x] Decay behavior is covered by deterministic tests.
 
 ## Risks & Rollback
 

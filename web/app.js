@@ -29,15 +29,35 @@ function render(data) {
   for (const e of data.entries) {
     const card = document.createElement("article");
     card.className = "entry";
+
     const body = document.createElement("p");
     body.className = "body";
     body.textContent = e.text; // textContent, never innerHTML — entries are untrusted
-    const meta = document.createElement("p");
+
+    const meta = document.createElement("div");
     meta.className = "meta";
-    meta.textContent = ago(e.ts);
+    const when = document.createElement("span");
+    when.textContent = ago(e.ts);
+    const keep = document.createElement("button");
+    keep.className = "keep";
+    keep.type = "button";
+    keep.textContent = e.seconds ? "kept · " + e.seconds : "keep";
+    keep.title = "buy this one more life on the stoop";
+    keep.addEventListener("click", () => second(e.id));
+    meta.append(when, keep);
+
     card.append(body, meta);
     wrap.appendChild(card);
   }
+}
+
+async function second(id) {
+  const res = await fetch("/second", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
+  });
+  if (res.ok) await load();
 }
 
 async function load() {

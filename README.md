@@ -37,5 +37,6 @@ captive-portal flow and burden the device for no real gain. What "secure" actual
 seams matter, is written down: [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) and
 [decision 0001](docs/decisions/0001-serve-http-not-https.md).
 
-**Status:** major 01 (the local Exchange — take a story, leave a story) is in. Next:
-[major 02, the forgetting engine](prune/majors/02-the-forgetting-engine.md).
+**Status:** majors 01–02 are in — the Exchange (take a story, leave a story) *and* the forgetting
+engine (the box stays small and full, composting the least-kept entry; tap **keep** to hold one).
+Next: [major 03, the Murmur view](prune/majors/03-the-murmur-view.md).

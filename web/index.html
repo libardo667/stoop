@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>the stoop</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>the stoop</h1>
+      <p id="prompt" class="prompt">…</p>
+    </header>
+
+    <section id="entries" class="entries" aria-live="polite"></section>
+
+    <section class="compose">
+      <p id="nudge" class="nudge">Took one? Leave one.</p>
+      <form id="leave">
+        <textarea id="text" maxlength="280" rows="3"
+                  placeholder="leave a story for the block…"></textarea>
+        <div class="row">
+          <span id="count" class="count"></span>
+          <button type="submit">leave it on the stoop</button>
+        </div>
+        <p id="msg" class="msg" role="status"></p>
+      </form>
+    </section>
+
+    <footer>
+      <p>made by humans, for the block · no accounts · forgets on purpose</p>
+    </footer>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

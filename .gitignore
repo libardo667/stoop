@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# The laptop-era store. The box's contents are local and ephemeral by design;
+# they are not part of the source. (On the ESP32 this lives on LittleFS.)
+data/

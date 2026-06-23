@@ -10,4 +10,21 @@ Software-first (runs on a laptop now), bound for an ESP32 later.
 - **What's being built, in order:** [`prune/ROADMAP.md`](prune/ROADMAP.md)
 - **How work is tracked:** [`prune/`](prune/) — an instance of the [prune](https://github.com/libardo667/prune) work-item harness.
 
-**Status:** greenfield — concept set; the first major (the local Exchange server) is next.
+## Run it
+
+No dependencies, no build step — just Python 3.8+ (standard library only).
+
+```bash
+# Run the box (serves on http://<this-device-ip>:8080)
+python3 -m src.server
+
+# Test
+python3 -m unittest discover -t . -s tests
+```
+
+Open `http://localhost:8080` on the same machine, or `http://<laptop-LAN-ip>:8080`
+from a phone on the same Wi-Fi — the closest laptop-era stand-in for joining the
+box's own network. Contents persist to `data/entries.json` (gitignored).
+
+**Status:** major 01 (the local Exchange — take a story, leave a story) is in. Next:
+[major 02, the forgetting engine](prune/majors/02-the-forgetting-engine.md).

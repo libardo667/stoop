@@ -26,5 +26,8 @@ Open `http://localhost:8080` on the same machine, or `http://<laptop-LAN-ip>:808
 from a phone on the same Wi-Fi — the closest laptop-era stand-in for joining the
 box's own network. Contents persist to `data/entries.json` (gitignored).
 
+Reaching it from a phone (and the firewall / VPN / WSL2 gotchas, across OSs):
+[`docs/RUNNING.md`](docs/RUNNING.md).
+
 **Status:** major 01 (the local Exchange — take a story, leave a story) is in. Next:
 [major 02, the forgetting engine](prune/majors/02-the-forgetting-engine.md).

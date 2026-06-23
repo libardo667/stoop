@@ -21,6 +21,11 @@ SSID = "take-a-story-leave-a-story"
 # the floor.
 ENTRY_MAX_LEN = 280
 
+# Hard ceiling on a request body, enforced before reading it into memory. A box
+# on a pole must not let a stranger OOM it with a giant POST. Generous headroom
+# over a 280-char entry's JSON envelope (even with multibyte UTF-8), nothing more.
+MAX_BODY_BYTES = 4096
+
 # Laptop store location (gitignored). The ESP32 store (major 05) satisfies the
 # same Store contract against LittleFS instead of a file.
 DATA_FILE = "data/entries.json"

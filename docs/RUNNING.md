@@ -34,6 +34,10 @@ once it knows the computer's **LAN IP** and nothing is blocking the port.
 
 Then on the phone (on the **same** Wi-Fi), open `http://THAT-IP:8080`.
 
+> Your phone will say **"Not secure."** That's expected — a Stoop serves plain HTTP by design (nothing
+> secret on the wire). See [`THREAT_MODEL.md`](THREAT_MODEL.md) and
+> [decision 0001](decisions/0001-serve-http-not-https.md) for why, and why HTTPS would make it worse.
+
 ### If the phone can't connect, in order of likelihood
 
 1. **Firewall.** The host OS is probably blocking inbound `:8080`.

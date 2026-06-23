@@ -4,16 +4,20 @@ Run from the repo root:
     python3 -m unittest discover -t . -s tests
 """
 
+import http.client
+import json
 import os
 import sys
 import tempfile
+import threading
 import unittest
+from http.server import ThreadingHTTPServer
 
 # Make `import src...` work whether run via unittest discover or directly.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src import config  # noqa: E402
-from src.server import validate_text  # noqa: E402
+from src.server import Handler, validate_text  # noqa: E402
 from src.store import JsonFileStore  # noqa: E402
 
 
@@ -52,6 +56,36 @@ class ValidateTests(unittest.TestCase):
     def test_trims_and_accepts(self):
         self.assertEqual(validate_text("  hello block  "), "hello block")
         self.assertEqual(validate_text("x" * config.ENTRY_MAX_LEN), "x" * config.ENTRY_MAX_LEN)
+
+
+class ServerBodyGuardTests(unittest.TestCase):
+    """The box runs on the street: a stranger must not be able to OOM it with a
+    giant POST. The body cap is enforced before the body is read."""
+
+    def setUp(self):
+        Handler.store = JsonFileStore(os.path.join(tempfile.mkdtemp(), "entries.json"))
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.port = self.httpd.server_address[1]
+        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+        self.thread.start()
+
+    def tearDown(self):
+        self.httpd.shutdown()
+        self.httpd.server_close()
+
+    def _post(self, body: str) -> int:
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        conn.request("POST", "/entries", body=body, headers={"Content-Type": "application/json"})
+        status = conn.getresponse().status
+        conn.close()
+        return status
+
+    def test_normal_post_accepted(self):
+        self.assertEqual(self._post(json.dumps({"text": "hello block"})), 201)
+
+    def test_oversized_body_rejected_with_413(self):
+        huge = json.dumps({"text": "x" * (config.MAX_BODY_BYTES + 1000)})
+        self.assertEqual(self._post(huge), 413)
 
 
 if __name__ == "__main__":

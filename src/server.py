@@ -39,6 +39,10 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "Stoop/0.1"
     store: JsonFileStore  # set as a class attr on the server's handler
 
+    # Drop a connection that goes quiet mid-request, so a slow/stalled client
+    # (deliberate or not) can't hold a worker thread open indefinitely.
+    timeout = 15
+
     # --- response helpers ---
 
     def _send_json(self, obj, status: int = 200) -> None:
@@ -79,8 +83,18 @@ class Handler(BaseHTTPRequestHandler):
         if urlparse(self.path).path != "/entries":
             self.send_error(404)
             return
-        length = int(self.headers.get("Content-Length") or 0)
-        raw = self.rfile.read(length).decode("utf-8") if length else ""
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            self._send_json({"error": "bad request"}, status=400)
+            return
+        if length < 0 or length > config.MAX_BODY_BYTES:
+            # Reject before allocating: never read an oversized body into memory.
+            self._send_json({"error": "too much at once"}, status=413)
+            return
+        # errors="replace": a malformed-UTF-8 body becomes harmless text and is
+        # caught by validate_text, rather than crashing the handler.
+        raw = self.rfile.read(length).decode("utf-8", errors="replace") if length else ""
         ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip()
 
         text = None

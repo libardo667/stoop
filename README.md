@@ -29,5 +29,13 @@ box's own network. Contents persist to `data/entries.json` (gitignored).
 Reaching it from a phone (and the firewall / VPN / WSL2 gotchas, across OSs):
 [`docs/RUNNING.md`](docs/RUNNING.md).
 
+## "Not secure"?
+
+The browser says "Not secure" because a Stoop serves plain **HTTP — on purpose**. It's an open,
+anonymous, no-accounts community board with nothing secret on the wire; HTTPS would break the
+captive-portal flow and burden the device for no real gain. What "secure" actually means here, and which
+seams matter, is written down: [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) and
+[decision 0001](docs/decisions/0001-serve-http-not-https.md).
+
 **Status:** major 01 (the local Exchange — take a story, leave a story) is in. Next:
 [major 02, the forgetting engine](prune/majors/02-the-forgetting-engine.md).

@@ -1,0 +1,8 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+# Convention: history/ is a LOCAL archive, never published. It mirrors the work-item
+# structure one level down (history/majors/, history/minors/) and holds only shipped or
+# retired items. The full ledger is kept locally; only live work is published.
+history/

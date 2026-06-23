@@ -37,6 +37,11 @@ captive-portal flow and burden the device for no real gain. What "secure" actual
 seams matter, is written down: [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) and
 [decision 0001](docs/decisions/0001-serve-http-not-https.md).
 
+## License & spirit
+
+[MIT](LICENSE) — take it, fork it, hang your own. If you build a Stoop, theme it, or improve the
+firmware, that's the whole idea. Made in Portland; meant to spread.
+
 **Status:** majors 01–02 are in — the Exchange (take a story, leave a story) *and* the forgetting
 engine (the box stays small and full, composting the least-kept entry; tap **keep** to hold one).
 Next: [major 03, the Murmur view](prune/majors/03-the-murmur-view.md).

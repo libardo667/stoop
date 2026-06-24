@@ -42,12 +42,14 @@ seams matter, is written down: [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) an
 [MIT](LICENSE) — take it, fork it, hang your own. If you build a Stoop, theme it, or improve the
 firmware, that's the whole idea. Made in Portland; meant to spread.
 
-**Status:** the full software arc (majors 01–04) is in — the Exchange (take a story, leave a story),
-the forgetting engine (the box stays small and full, composting the least-kept entry; tap **keep** to
-hold one), the Murmur (a second tab: the weather of the block), and the keeper surface + theming (one
-codebase becomes a story-box, rock-box, or glowing phosphor tips-terminal; a local secret-gated
-[`/admin`](web/admin.html) console prunes and re-themes). Next, and the natural pause for a hardware
-build: [major 05, the ESP32 embodiment](prune/majors/05-esp32-embodiment.md).
+**Status: software v1 complete** (majors 01–04, minors 31–32) — the Exchange (take a story, leave a
+story), the forgetting engine (the box stays small and full, composting the least-kept entry; tap
+**keep** to hold one), the Murmur (a second tab: the weather of the block), the keeper surface + theming
+(one codebase becomes a story-box, rock-box, or glowing phosphor tips-terminal; a local secret-gated
+[`/admin`](web/admin.html) console prunes and re-themes), and the full guard layer (length cap, body
+ceiling, connection timeout, per-client throttle). Every seam in the
+[threat model](docs/THREAT_MODEL.md) is closed. The only remaining major — and the natural pause for a
+hardware build — is [major 05, the ESP32 embodiment](prune/majors/05-esp32-embodiment.md).
 
 ### Make it your own (keeper)
 

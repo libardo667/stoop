@@ -26,6 +26,13 @@ ENTRY_MAX_LEN = 280
 # over a 280-char entry's JSON envelope (even with multibyte UTF-8), nothing more.
 MAX_BODY_BYTES = 4096
 
+# Per-client throttle on public posts (leaving, seconding). Keyed on the transient
+# connection address, in memory only — never logged or persisted (see THREAT_MODEL).
+# Set RATE_MAX_POSTS <= 0 to disable. Conservative: a human leaving a thought every
+# few seconds is fine; a flood isn't. Keeper (admin) actions are exempt.
+RATE_MAX_POSTS = 5
+RATE_WINDOW_SECONDS = 60
+
 # --- the forgetting engine (major 02) ---
 # The box is small and always full, so leaving something pushes the least-loved
 # thing out. (Entry-count ceiling here; the ESP32 store swaps in a byte budget.)

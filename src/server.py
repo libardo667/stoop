@@ -10,6 +10,7 @@ from . import admin, config, murmur, themes
 from .archive import JsonlArchive
 from .box import Box
 from .decay import DecayWeights
+from .ratelimit import RateLimiter
 from .settings import Settings
 from .store import JsonFileStore
 
@@ -46,6 +47,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "Stoop/0.1"
     box: Box  # set as class attrs on the server's handler
     settings: Settings
+    limiter: RateLimiter
 
     # Drop a connection that goes quiet mid-request, so a slow/stalled client
     # (deliberate or not) can't hold a worker thread open indefinitely.
@@ -145,12 +147,20 @@ class Handler(BaseHTTPRequestHandler):
         if path not in self.POST_ROUTES:
             self.send_error(404)
             return
+
+        is_admin = path.startswith("/admin/")
+        # Throttle public posts (leaving, seconding) before doing any work. Keeper
+        # actions are key-gated and trusted, so they're exempt.
+        if not is_admin and not self.limiter.allow(self.client_address[0]):
+            self._send_json({"error": "easy — too many at once. give it a moment."}, status=429)
+            return
+
         raw = self._read_body()
         if raw is None:
             return
 
         # The keeper gate: admin routes require the secret, fail closed.
-        if path.startswith("/admin/") and not admin.authorized(self.headers.get("X-Keeper-Key")):
+        if is_admin and not admin.authorized(self.headers.get("X-Keeper-Key")):
             self._send_json({"error": "not the keeper"}, status=403)
             return
 
@@ -210,6 +220,7 @@ def make_server():
     httpd = ThreadingHTTPServer((config.HOST, config.PORT), Handler)
     Handler.box = box
     Handler.settings = settings
+    Handler.limiter = RateLimiter(config.RATE_MAX_POSTS, config.RATE_WINDOW_SECONDS)
     return httpd, box
 
 

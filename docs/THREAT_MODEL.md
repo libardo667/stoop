@@ -23,18 +23,18 @@ the non-assets, and the actual seams — so "is it secure?" has a concrete answe
 | **Identity leakage** | The box records who left what (IP, MAC, author). | ✅ **Closed by design.** Entries carry no author; server logs are method+path only, never client identity. *Keep it this way — do not add request-identifying logs.* |
 | **Path traversal** | A crafted URL reads arbitrary files off the device. | ✅ **Closed.** Static files are served from a hardcoded path→file whitelist (`STATIC` in `src/server.py`), never a filesystem join on user input. |
 | **Resource exhaustion (oversized body)** | A giant POST is read into memory and OOMs a tiny device. | ✅ **Closed.** Bodies over `MAX_BODY_BYTES` are rejected `413` *before* allocation; a stalled client is dropped via the handler `timeout` (`src/server.py`). |
-| **Flooding / spam** | A firehose of entries drowns the block or fills the box. | ⚠️ **Partly tracked.** Capacity + eviction = major `02` (the box stays bounded and forgets); per-connection throttles = minor `32`. |
+| **Flooding / spam** | A firehose of entries drowns the block or fills the box. | ✅ **Closed.** The box stays bounded and forgets (major `02`), and public posts are rate-limited per client (`429`) by an in-memory sliding window keyed on the transient connection address — no identity stored (minor `32`, `src/ratelimit.py`). |
 | **Keeper-admin exposure** | The prune/settings surface becomes an attack surface on a public node. | ✅ **Closed (major 04).** Admin verbs (`/admin/*`) are **secret-gated and fail closed**: the key is read from the `STOOP_KEEPER_KEY` env var (never the repo, never disk), and an un-configured box has *no* admin rather than a default-password one. The key travels in a header over the local link in cleartext — acceptable here for the same reason entries are (local, no remote attacker in the model); it is never stored off-device. |
 | **Malicious/abusive content** | Someone leaves something hateful or harmful (not code — words). | ⚠️ **By design, social + bounded.** No content pipeline (a non-goal). Bounded by brevity, text-only, decay (it ages out), and the keeper as janitor. This is the same way a wooden free library is "moderated." |
 
 ## Posture summary
 
-The injection and privacy seams a public box most needs closed are **closed**: untrusted content can't
-execute, can't read the filesystem, can't OOM the device, can't be traced to a person, and the keeper
-surface fails closed. The one genuinely *open* item is not encryption — it's the last of the **content
-firehose**: per-connection rate limiting (`32`; the capacity/decay half landed in `02`, the keeper
-surface in `04`). When someone asks "but it's not HTTPS?", the answer is
-[decision 0001](decisions/0001-serve-http-not-https.md): for this device, the padlock is not the seam.
+As of v1, every seam in the table above is **closed**: untrusted content can't execute, can't read the
+filesystem, can't OOM the device, can't be traced to a person; the keeper surface fails closed; and the
+content firehose is bounded both ways — the box forgets (`02`) and throttles (`32`). The remaining
+"⚠️" rows are *by-design social bounds* (abusive words, handled like a wooden free library — short,
+anonymous, ages out, prunable), not unguarded holes. When someone asks "but it's not HTTPS?", the answer
+is [decision 0001](decisions/0001-serve-http-not-https.md): for this device, the padlock is not the seam.
 
 ## A note for anyone hanging one
 

@@ -2,11 +2,12 @@
 
 ## Current State
 
-- Product status: Majors `01`–`04` shipped (plus minor `31`) — the Exchange, the forgetting engine, the
-  Murmur, *and* the keeper surface + theming. The box is bounded and has its two faces; now one codebase
-  is a story-box, rock-box, or glowing tips-terminal by a keeper's config, with a local secret-gated
-  admin console to prune and re-theme. Software-first; the next major is the hardware. **The whole
-  software arc is done — `05` (ESP32) is the natural pause point for the hackerspace.**
+- Product status: **Software v1 complete.** Majors `01`–`04` plus minors `31`–`32` shipped — the
+  Exchange, the forgetting engine, the Murmur, the keeper surface + theming, and the full guard layer
+  (length cap, body ceiling, timeout, per-client throttle). The box is bounded, has its two faces, wears
+  any of several themes/skins by a keeper's config, self-tends, and resists a flood. Every seam in the
+  threat model is closed. **The only remaining major is `05` (ESP32) — the natural pause point for the
+  hackerspace, since it wants hardware in hand.**
 - Architecture status: Stack locked — Python stdlib `http.server` + one hand-written page, zero
   dependencies, no build step. Storage sits behind a `Store` interface (`src/store/`); the forgetting
   *policy* is pure in `src/decay.py`, orchestrated by `src/box.py` — so the ESP32 LittleFS store (05)
@@ -39,7 +40,7 @@
 
 1. `30` — SSID-as-signage + captive-portal auto-pop.
 2. ~~`31` — Phosphor pass: the retro-terminal aesthetic for the portal.~~ **Shipped** (as a skin, with major `04`).
-3. `32` — Brevity & rate guards: length caps, simple per-connection throttles. *(body ceiling + timeout landed; rate limit remains.)*
+3. ~~`32` — Brevity & rate guards: length caps, body ceiling, timeout, per-client throttle.~~ **Shipped.**
 
 ## Recommended Execution Order
 

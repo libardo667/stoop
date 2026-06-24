@@ -21,6 +21,7 @@ from src import config, murmur, themes  # noqa: E402
 from src.archive import JsonlArchive  # noqa: E402
 from src.box import Box  # noqa: E402
 from src.decay import DecayWeights, keep_score, pick_eviction  # noqa: E402
+from src.ratelimit import RateLimiter  # noqa: E402
 from src.server import Handler, validate_text  # noqa: E402
 from src.settings import Settings  # noqa: E402
 from src.store import Entry, JsonFileStore  # noqa: E402
@@ -239,6 +240,34 @@ class MurmurTests(unittest.TestCase):
         self.assertEqual(d["newest_age"], 20)
 
 
+# --- the rate limiter (pure) ---
+
+class RateLimitTests(unittest.TestCase):
+    def test_allows_then_blocks_within_window(self):
+        rl = RateLimiter(2, 10, clock=FakeClock(0.0))
+        self.assertTrue(rl.allow("a"))
+        self.assertTrue(rl.allow("a"))
+        self.assertFalse(rl.allow("a"))
+
+    def test_window_resets(self):
+        clock = FakeClock(0.0)
+        rl = RateLimiter(1, 10, clock=clock)
+        self.assertTrue(rl.allow("a"))
+        self.assertFalse(rl.allow("a"))
+        clock.t = 11
+        self.assertTrue(rl.allow("a"))
+
+    def test_keys_are_independent(self):
+        rl = RateLimiter(1, 10, clock=FakeClock(0.0))
+        self.assertTrue(rl.allow("a"))
+        self.assertTrue(rl.allow("b"))
+        self.assertFalse(rl.allow("a"))
+
+    def test_disabled_when_max_nonpositive(self):
+        rl = RateLimiter(0, 10, clock=FakeClock(0.0))
+        self.assertTrue(all(rl.allow("a") for _ in range(50)))
+
+
 # --- theming + keeper settings ---
 
 class ThemeTests(unittest.TestCase):
@@ -309,6 +338,7 @@ class ServerTests(unittest.TestCase):
     def setUp(self):
         Handler.box = Box(_temp_store(), capacity=50, weights=_weights())
         Handler.settings = Settings(os.path.join(tempfile.mkdtemp(), "settings.json"))
+        Handler.limiter = RateLimiter(1000, 60)  # effectively off for most tests
         os.environ["STOOP_KEEPER_KEY"] = "test-key"
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self.port = self.httpd.server_address[1]
@@ -404,6 +434,21 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(status, 200)
         _, cfg = self._get("/config")
         self.assertEqual(json.loads(cfg)["title"], "show us your rock")
+
+    def test_rapid_posts_are_throttled(self):
+        Handler.limiter = RateLimiter(2, 60)  # tiny, just for this test
+        body = json.dumps({"text": "hi"})
+        self.assertEqual(self._post("/entries", body)[0], 201)
+        self.assertEqual(self._post("/entries", body)[0], 201)
+        self.assertEqual(self._post("/entries", body)[0], 429)  # the flood is turned away
+
+    def test_keeper_actions_bypass_throttle(self):
+        Handler.limiter = RateLimiter(1, 60)  # one public post allowed
+        _, payload = self._post("/entries", json.dumps({"text": "keep me"}))
+        eid = json.loads(payload)["id"]
+        # public quota is now spent, but the keeper is exempt:
+        status, _ = self._post_keyed("/admin/remove", json.dumps({"id": eid}), "test-key")
+        self.assertEqual(status, 200)
 
 
 if __name__ == "__main__":

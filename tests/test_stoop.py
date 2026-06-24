@@ -17,11 +17,12 @@ from http.server import ThreadingHTTPServer
 # Make `import src...` work whether run via unittest discover or directly.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src import config, murmur  # noqa: E402
+from src import config, murmur, themes  # noqa: E402
 from src.archive import JsonlArchive  # noqa: E402
 from src.box import Box  # noqa: E402
 from src.decay import DecayWeights, keep_score, pick_eviction  # noqa: E402
 from src.server import Handler, validate_text  # noqa: E402
+from src.settings import Settings  # noqa: E402
 from src.store import Entry, JsonFileStore  # noqa: E402
 
 
@@ -238,14 +239,77 @@ class MurmurTests(unittest.TestCase):
         self.assertEqual(d["newest_age"], 20)
 
 
+# --- theming + keeper settings ---
+
+class ThemeTests(unittest.TestCase):
+    def test_resolve_returns_bundle_with_skin(self):
+        b = themes.resolve("stoop", "phosphor")
+        self.assertEqual(b["skin"], "phosphor")
+        self.assertIn("prompt", b)
+        self.assertIn("noun_plural", b)
+
+    def test_prompt_override(self):
+        self.assertEqual(themes.resolve("stoop", "paper", "Custom?")["prompt"], "Custom?")
+
+    def test_unknown_theme_falls_back(self):
+        self.assertEqual(
+            themes.resolve("nope", "paper")["title"],
+            themes.THEMES[themes.DEFAULT_THEME]["title"],
+        )
+
+    def test_unknown_skin_falls_back(self):
+        self.assertEqual(themes.resolve("stoop", "nope")["skin"], themes.DEFAULT_SKIN)
+
+
+class SettingsTests(unittest.TestCase):
+    def setUp(self):
+        self.path = os.path.join(tempfile.mkdtemp(), "settings.json")
+
+    def test_defaults(self):
+        d = Settings(self.path).get()
+        self.assertEqual(d["theme"], config.DEFAULT_THEME)
+        self.assertEqual(d["skin"], config.DEFAULT_SKIN)
+        self.assertIsNone(d["prompt"])
+
+    def test_update_persists_across_instances(self):
+        Settings(self.path).update({"theme": "rocks", "skin": "phosphor", "prompt": "Rocks?"})
+        reopened = Settings(self.path).get()
+        self.assertEqual(reopened["theme"], "rocks")
+        self.assertEqual(reopened["skin"], "phosphor")
+        self.assertEqual(reopened["prompt"], "Rocks?")
+
+    def test_unknown_theme_or_skin_raises(self):
+        s = Settings(self.path)
+        with self.assertRaises(ValueError):
+            s.update({"theme": "nope"})
+        with self.assertRaises(ValueError):
+            s.update({"skin": "nope"})
+
+    def test_prompt_clear_and_length(self):
+        s = Settings(self.path)
+        s.update({"prompt": "hi"})
+        self.assertEqual(s.get()["prompt"], "hi")
+        s.update({"prompt": "   "})  # blank clears
+        self.assertIsNone(s.get()["prompt"])
+        with self.assertRaises(ValueError):
+            s.update({"prompt": "x" * (config.ENTRY_MAX_LEN + 1)})
+
+    def test_resolved_applies_theme(self):
+        s = Settings(self.path)
+        s.update({"theme": "tips"})
+        self.assertEqual(s.resolved()["noun_plural"], "tips")
+
+
 # --- the server, end to end ---
 
 class ServerTests(unittest.TestCase):
     """The box runs on the street: oversized POSTs are refused before allocation,
-    and the seconding route behaves."""
+    seconding behaves, and the keeper gate fails closed."""
 
     def setUp(self):
         Handler.box = Box(_temp_store(), capacity=50, weights=_weights())
+        Handler.settings = Settings(os.path.join(tempfile.mkdtemp(), "settings.json"))
+        os.environ["STOOP_KEEPER_KEY"] = "test-key"
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self.port = self.httpd.server_address[1]
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
@@ -254,6 +318,7 @@ class ServerTests(unittest.TestCase):
     def tearDown(self):
         self.httpd.shutdown()
         self.httpd.server_close()
+        os.environ.pop("STOOP_KEEPER_KEY", None)
 
     def _post(self, path, body):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
@@ -266,6 +331,17 @@ class ServerTests(unittest.TestCase):
     def _get(self, path):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
         conn.request("GET", path)
+        resp = conn.getresponse()
+        status, payload = resp.status, resp.read()
+        conn.close()
+        return status, payload
+
+    def _post_keyed(self, path, body, key):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        conn.request(
+            "POST", path, body=body,
+            headers={"Content-Type": "application/json", "X-Keeper-Key": key},
+        )
         resp = conn.getresponse()
         status, payload = resp.status, resp.read()
         conn.close()
@@ -297,6 +373,37 @@ class ServerTests(unittest.TestCase):
         status, payload = self._get("/murmur")
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(payload)["count"], 1)
+
+    def test_config_route_default_theme(self):
+        status, payload = self._get("/config")
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(payload)["title"], "the stoop")
+
+    def test_admin_requires_key(self):
+        _, payload = self._post("/entries", json.dumps({"text": "spam"}))
+        eid = json.loads(payload)["id"]
+        status, _ = self._post("/admin/remove", json.dumps({"id": eid}))  # no key
+        self.assertEqual(status, 403)
+
+    def test_admin_wrong_key_is_rejected(self):
+        _, payload = self._post("/entries", json.dumps({"text": "spam"}))
+        eid = json.loads(payload)["id"]
+        status, _ = self._post_keyed("/admin/remove", json.dumps({"id": eid}), "wrong")
+        self.assertEqual(status, 403)
+
+    def test_admin_remove_with_key(self):
+        _, payload = self._post("/entries", json.dumps({"text": "spam"}))
+        eid = json.loads(payload)["id"]
+        status, _ = self._post_keyed("/admin/remove", json.dumps({"id": eid}), "test-key")
+        self.assertEqual(status, 200)
+        _, listing = self._get("/entries")
+        self.assertEqual(json.loads(listing)["entries"], [])
+
+    def test_admin_settings_changes_the_box(self):
+        status, _ = self._post_keyed("/admin/settings", json.dumps({"theme": "rocks"}), "test-key")
+        self.assertEqual(status, 200)
+        _, cfg = self._get("/config")
+        self.assertEqual(json.loads(cfg)["title"], "show us your rock")
 
 
 if __name__ == "__main__":

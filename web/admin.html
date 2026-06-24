@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>the stoop · keeper</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>keeper</h1>
+      <p class="prompt">the quiet controls. local only — your key stays on this device, never the box.</p>
+      <p class="keeper-link"><a href="/">← back to the stoop</a></p>
+    </header>
+
+    <section class="compose">
+      <label class="field">
+        <span>keeper key</span>
+        <input id="key" type="password" placeholder="STOOP_KEEPER_KEY" autocomplete="off">
+      </label>
+      <label class="checkbox"><input id="remember" type="checkbox"> remember on this device</label>
+    </section>
+
+    <section class="compose">
+      <h2>the box</h2>
+      <label class="field"><span>theme (the prompt makes the box)</span><select id="theme"></select></label>
+      <label class="field"><span>skin</span><select id="skin"></select></label>
+      <label class="field">
+        <span>custom prompt — optional</span>
+        <textarea id="prompt" rows="2" maxlength="280" placeholder="leave blank to use the theme's own prompt"></textarea>
+      </label>
+      <button id="save" type="button">save settings</button>
+      <p id="save-msg" class="msg" role="status"></p>
+    </section>
+
+    <section class="view">
+      <h2>entries</h2>
+      <p class="hint">Prune anything that doesn't belong. Removed entries compost to the local archive — janitor, not shredder.</p>
+      <div id="admin-entries" class="entries"></div>
+    </section>
+  </main>
+  <script src="/admin.js"></script>
+</body>
+</html>

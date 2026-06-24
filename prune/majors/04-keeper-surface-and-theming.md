@@ -1,5 +1,11 @@
 # Keeper surface and prompt-as-theme: one codebase, many boxes
 
+> **Status: Shipped (2026-06-23).** `src/themes.py` (content themes: story/rocks/tips + skins,
+> orthogonal), `src/settings.py` (keeper choices, persisted locally), `src/admin.py` (secret-gated,
+> fail-closed, key from `STOOP_KEEPER_KEY`, never on disk). `GET /config` serves the resolved bundle;
+> `/admin/remove` + `/admin/settings` are the keeper verbs; `web/admin.html` is the console. **Folds in
+> minor 31:** phosphor skin baked into the theming system. 39 tests green.
+
 ## Problem
 
 A Stoop needs a tender — someone to remove the rare bad entry (janitor, not censor) — and the concept's
@@ -21,11 +27,11 @@ a keeper surface there's no local control; without theming, every box is a story
 
 ## Acceptance Criteria
 
-- [ ] Keeper can remove an entry and change settings locally, gated by a locally-set secret; no
+- [x] Keeper can remove an entry and change settings locally, gated by a locally-set secret; no
       credential leaves the device.
-- [ ] Changing one config turns the box into a different-prompt box (framing, SSID, copy) with no code
+- [x] Changing one config turns the box into a different-prompt box (framing, SSID, copy) with no code
       change.
-- [ ] With no keeper action, the box still self-tends via the forgetting engine.
+- [x] With no keeper action, the box still self-tends via the forgetting engine.
 
 ## Risks & Rollback
 

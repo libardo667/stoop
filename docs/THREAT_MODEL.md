@@ -24,15 +24,16 @@ the non-assets, and the actual seams — so "is it secure?" has a concrete answe
 | **Path traversal** | A crafted URL reads arbitrary files off the device. | ✅ **Closed.** Static files are served from a hardcoded path→file whitelist (`STATIC` in `src/server.py`), never a filesystem join on user input. |
 | **Resource exhaustion (oversized body)** | A giant POST is read into memory and OOMs a tiny device. | ✅ **Closed.** Bodies over `MAX_BODY_BYTES` are rejected `413` *before* allocation; a stalled client is dropped via the handler `timeout` (`src/server.py`). |
 | **Flooding / spam** | A firehose of entries drowns the block or fills the box. | ⚠️ **Partly tracked.** Capacity + eviction = major `02` (the box stays bounded and forgets); per-connection throttles = minor `32`. |
-| **Keeper-admin exposure** | The prune/settings surface becomes an attack surface on a public node. | ⚠️ **Future.** Major `04` requires the admin surface to be **local-only and secret-gated**, with no credential stored off-device. |
+| **Keeper-admin exposure** | The prune/settings surface becomes an attack surface on a public node. | ✅ **Closed (major 04).** Admin verbs (`/admin/*`) are **secret-gated and fail closed**: the key is read from the `STOOP_KEEPER_KEY` env var (never the repo, never disk), and an un-configured box has *no* admin rather than a default-password one. The key travels in a header over the local link in cleartext — acceptable here for the same reason entries are (local, no remote attacker in the model); it is never stored off-device. |
 | **Malicious/abusive content** | Someone leaves something hateful or harmful (not code — words). | ⚠️ **By design, social + bounded.** No content pipeline (a non-goal). Bounded by brevity, text-only, decay (it ages out), and the keeper as janitor. This is the same way a wooden free library is "moderated." |
 
 ## Posture summary
 
 The injection and privacy seams a public box most needs closed are **closed**: untrusted content can't
-execute, can't read the filesystem, can't OOM the device, and can't be traced to a person. The genuinely
-*open* work is not encryption — it's the **content firehose** (rate limiting `32`, capacity/decay `02`)
-and the **future keeper surface** (`04`). When someone asks "but it's not HTTPS?", the answer is
+execute, can't read the filesystem, can't OOM the device, can't be traced to a person, and the keeper
+surface fails closed. The one genuinely *open* item is not encryption — it's the last of the **content
+firehose**: per-connection rate limiting (`32`; the capacity/decay half landed in `02`, the keeper
+surface in `04`). When someone asks "but it's not HTTPS?", the answer is
 [decision 0001](decisions/0001-serve-http-not-https.md): for this device, the padlock is not the seam.
 
 ## A note for anyone hanging one

@@ -1,5 +1,9 @@
 # Phosphor pass: the retro-terminal aesthetic for the portal
 
+> **Status: Shipped (2026-06-23), folded into major 04.** Implemented as a `phosphor` *skin* in the
+> theming system: pure CSS keyed off `body[data-skin]` (dark CRT palette, monospace, neon glow, faint
+> scanlines), no JS-injected styles, no external deps. A keeper selects it from the admin console.
+
 ## Problem
 
 The portal should feel like the cyberpunk dead-drop that inspired this ("YOU CAN'T STOP THE SIGNAL"),
@@ -16,5 +20,5 @@ themeable per keeper config. Keep it tiny enough for the ESP32 payload budget.
 
 ## Acceptance Criteria
 
-- [ ] The portal renders in a coherent retro-terminal aesthetic.
-- [ ] The CSS is small (fits the device payload budget) and has no external dependencies.
+- [x] The portal renders in a coherent retro-terminal aesthetic.
+- [x] The CSS is small (fits the device payload budget) and has no external dependencies.

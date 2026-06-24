@@ -2,10 +2,11 @@
 
 ## Current State
 
-- Product status: Majors `01`–`03` shipped — the Exchange, the forgetting engine, *and* the Murmur. The
-  box is bounded (stays full and fresh on its own, composting the least-kept entry; a "keep" buys a
-  story more life), and it now has its second face: an ambient portrait of what the block keeps saying
-  and holds onto. Software-first; hardware later.
+- Product status: Majors `01`–`04` shipped (plus minor `31`) — the Exchange, the forgetting engine, the
+  Murmur, *and* the keeper surface + theming. The box is bounded and has its two faces; now one codebase
+  is a story-box, rock-box, or glowing tips-terminal by a keeper's config, with a local secret-gated
+  admin console to prune and re-theme. Software-first; the next major is the hardware. **The whole
+  software arc is done — `05` (ESP32) is the natural pause point for the hackerspace.**
 - Architecture status: Stack locked — Python stdlib `http.server` + one hand-written page, zero
   dependencies, no build step. Storage sits behind a `Store` interface (`src/store/`); the forgetting
   *policy* is pure in `src/decay.py`, orchestrated by `src/box.py` — so the ESP32 LittleFS store (05)
@@ -31,14 +32,14 @@
 1. ~~`01` — Local Exchange server: the take-a-story / leave-a-story core, served to a browser.~~ **Shipped.**
 2. ~~`02` — The forgetting engine: capacity + age + reader-signal decay (the memory logic, in proportion).~~ **Shipped.**
 3. ~~`03` — The Murmur view: the ambient portrait of the block.~~ **Shipped.**
-4. `04` — Keeper surface + prompt/theming: pruning, and the prompt-makes-the-box system. **← next**
-5. `05` — ESP32 embodiment: open AP, captive portal, LittleFS persistence, OTA.
+4. ~~`04` — Keeper surface + prompt/theming: pruning, and the prompt-makes-the-box system.~~ **Shipped** (incl. minor `31`, phosphor).
+5. `05` — ESP32 embodiment: open AP, captive portal, LittleFS persistence, OTA. **← next (needs hardware)**
 
 ## Minor Queue
 
 1. `30` — SSID-as-signage + captive-portal auto-pop.
-2. `31` — Phosphor pass: the retro-terminal aesthetic for the portal.
-3. `32` — Brevity & rate guards: length caps, simple per-connection throttles.
+2. ~~`31` — Phosphor pass: the retro-terminal aesthetic for the portal.~~ **Shipped** (as a skin, with major `04`).
+3. `32` — Brevity & rate guards: length caps, simple per-connection throttles. *(body ceiling + timeout landed; rate limit remains.)*
 
 ## Recommended Execution Order
 

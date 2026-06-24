@@ -40,6 +40,16 @@ DECAY_W_SECONDS = 0.5                           # each "keep" ~ half a fresh ent
 # Evicted entries compost here: append-only, local, gitignored under prune/history/.
 ARCHIVE_FILE = "prune/history/evicted-entries.jsonl"
 
+# --- keeper + theming (major 04 / minor 31) ---
+# The prompt makes the box. A keeper picks a content theme and an aesthetic skin
+# (see src/themes.py); these are the defaults a fresh box wears.
+DEFAULT_THEME = "stoop"
+DEFAULT_SKIN = "paper"
+
+# Keeper choices persist here (gitignored, local). The keeper SECRET is not here —
+# it's read from the STOOP_KEEPER_KEY environment variable, never stored on disk.
+SETTINGS_FILE = "data/settings.json"
+
 # Laptop store location (gitignored). The ESP32 store (major 05) satisfies the
 # same Store contract against LittleFS instead of a file.
 DATA_FILE = "data/entries.json"

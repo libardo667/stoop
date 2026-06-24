@@ -30,10 +30,33 @@ function formatSpan(seconds) {
   return d + (d === 1 ? " day" : " days");
 }
 
+// --- theme (the prompt makes the box) ---
+
+let THEME = {
+  noun_singular: "story",
+  noun_plural: "stories",
+};
+
+async function applyConfig() {
+  const res = await fetch("/config");
+  THEME = await res.json();
+  document.title = THEME.title;
+  $("#title").textContent = THEME.title;
+  $("#prompt").textContent = THEME.prompt;
+  $("#text").placeholder = THEME.placeholder;
+  $("#leave-btn").textContent = THEME.leave_label;
+  $("#nudge").textContent = THEME.nudge;
+  $("#hint-exchange").textContent = THEME.hint_exchange;
+  $("#hint-murmur").textContent = THEME.hint_murmur;
+  $("#tab-exchange").textContent = THEME.tab_exchange;
+  $("#tab-murmur").textContent = THEME.tab_murmur;
+  $("#footer").textContent = THEME.footer;
+  document.body.dataset.skin = THEME.skin; // CSS keys the look off this
+}
+
 // --- the exchange ---
 
 function renderEntries(data) {
-  $("#prompt").textContent = data.prompt;
   const wrap = $("#entries");
   wrap.innerHTML = "";
 
@@ -122,7 +145,7 @@ function murmurHeadline(d) {
   if (d.newest_age < 3600) mood = "The block is lively";
   else if (d.newest_age < 86400) mood = "The block is stirring";
   else mood = "The block is quiet";
-  const n = d.count === 1 ? "one story" : d.count + " stories";
+  const n = d.count === 1 ? "one " + THEME.noun_singular : d.count + " " + THEME.noun_plural;
   return `${mood} — ${n} on the stoop, the newest left ${formatDuration(d.newest_age)}.`;
 }
 
@@ -187,12 +210,13 @@ function showView(name) {
   else loadExchange();
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   $("#text").addEventListener("input", updateCount);
   $("#leave").addEventListener("submit", leave);
   document.querySelectorAll(".tab").forEach((t) => {
     t.addEventListener("click", () => showView(t.dataset.view));
   });
   updateCount();
+  await applyConfig(); // dress the box before showing it
   loadExchange();
 });

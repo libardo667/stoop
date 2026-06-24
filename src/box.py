@@ -40,6 +40,14 @@ class Box:
         self._forget()
         return entry
 
+    def remove(self, entry_id: str) -> "Entry | None":
+        """Keeper prune: pull one entry by hand. Composted (not destroyed), like an
+        eviction — the keeper is a janitor, not a shredder."""
+        removed = self._store.remove(entry_id)
+        if removed is not None and self._archive is not None:
+            self._archive.record(removed, reason="pruned", at=self._clock())
+        return removed
+
     def second(self, entry_id: str) -> "Entry | None":
         """Record one anonymous 'this one stays'. Returns the updated entry, or
         None if it's already gone."""

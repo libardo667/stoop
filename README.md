@@ -42,7 +42,20 @@ seams matter, is written down: [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) an
 [MIT](LICENSE) — take it, fork it, hang your own. If you build a Stoop, theme it, or improve the
 firmware, that's the whole idea. Made in Portland; meant to spread.
 
-**Status:** majors 01–03 are in — the Exchange (take a story, leave a story), the forgetting engine
-(the box stays small and full, composting the least-kept entry; tap **keep** to hold one), and the
-Murmur (a second tab: the weather of the block — what it keeps saying, what it holds onto). Next:
-[major 04, the keeper surface + theming](prune/majors/04-keeper-surface-and-theming.md).
+**Status:** the full software arc (majors 01–04) is in — the Exchange (take a story, leave a story),
+the forgetting engine (the box stays small and full, composting the least-kept entry; tap **keep** to
+hold one), the Murmur (a second tab: the weather of the block), and the keeper surface + theming (one
+codebase becomes a story-box, rock-box, or glowing phosphor tips-terminal; a local secret-gated
+[`/admin`](web/admin.html) console prunes and re-themes). Next, and the natural pause for a hardware
+build: [major 05, the ESP32 embodiment](prune/majors/05-esp32-embodiment.md).
+
+### Make it your own (keeper)
+
+Set a secret, run, and visit `/admin`:
+
+```bash
+STOOP_KEEPER_KEY="your-secret" python3 -m src.server   # then open /admin
+```
+
+Pick a **theme** (story / rocks / tips) and a **skin** (paper / phosphor), or set a custom prompt. With
+no key set, the keeper surface is disabled — an un-configured box has no admin, by design.

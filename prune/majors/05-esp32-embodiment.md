@@ -23,7 +23,9 @@ Spike the captive-portal-across-phone-OSes and LittleFS-budget unknowns during m
 
 - `firmware/` — ESP32 sketch/build (AP, captive DNS, HTTP, OTA)
 - `firmware/store_littlefs.*` — the store interface on LittleFS
-- `docs/hardware.md` — board choice, flashing, capacity budget
+- [`docs/HARDWARE.md`](../../docs/HARDWARE.md) — **draft plan written** (the role, the carries-over-vs-rewritten
+  split, MicroPython-vs-C, captive portal, keeper-on-open-AP, and open questions for the hackerspace).
+  Board choice / flashing / capacity budget get filled in as the build happens.
 
 ## Acceptance Criteria
 

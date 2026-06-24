@@ -195,7 +195,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(updated, status=200)
 
     def log_message(self, fmt, *args) -> None:  # noqa: ARG002 - stdlib signature
-        # One quiet line per request instead of the noisy default.
+        # One quiet line per request instead of the noisy default. A connection
+        # can time out (our slowloris guard) before any request line is parsed —
+        # e.g. a browser's speculative/preconnect socket — in which case
+        # command/path were never set. Stay silent rather than crash.
+        if getattr(self, "command", None) is None:
+            return
         print(f"  {self.command} {self.path}")
 
 

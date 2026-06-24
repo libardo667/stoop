@@ -329,6 +329,16 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(s.resolved()["noun_plural"], "tips")
 
 
+# --- handler robustness ---
+
+class HandlerLogTests(unittest.TestCase):
+    def test_log_message_survives_a_connection_with_no_request(self):
+        # A socket that times out before sending a request line has no command/
+        # path set; log_message (called via log_error) must not crash.
+        handler = Handler.__new__(Handler)  # allocate without parsing a request
+        handler.log_message("Request timed out: %r", "boom")  # should be a no-op
+
+
 # --- the server, end to end ---
 
 class ServerTests(unittest.TestCase):

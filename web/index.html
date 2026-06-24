@@ -11,26 +11,37 @@
     <header>
       <h1>the stoop</h1>
       <p id="prompt" class="prompt">…</p>
+      <nav class="tabs">
+        <button class="tab is-active" type="button" data-view="exchange">stoop</button>
+        <button class="tab" type="button" data-view="murmur">murmur</button>
+      </nav>
     </header>
 
-    <section id="entries" class="entries" aria-live="polite"></section>
+    <section id="view-exchange" class="view">
+      <div id="entries" class="entries" aria-live="polite"></div>
 
-    <p class="hint">
-      This stoop only holds so much. Leave a story and the least-kept one drifts
-      off — tap <em>keep</em> to hold one here a while longer.
-    </p>
+      <p class="hint">
+        This stoop only holds so much. Leave a story and the least-kept one drifts
+        off — tap <em>keep</em> to hold one here a while longer.
+      </p>
 
-    <section class="compose">
-      <p id="nudge" class="nudge">Took one? Leave one.</p>
-      <form id="leave">
-        <textarea id="text" maxlength="280" rows="3"
-                  placeholder="leave a story for the block…"></textarea>
-        <div class="row">
-          <span id="count" class="count"></span>
-          <button type="submit">leave it on the stoop</button>
-        </div>
-        <p id="msg" class="msg" role="status"></p>
-      </form>
+      <section class="compose">
+        <p id="nudge" class="nudge">Took one? Leave one.</p>
+        <form id="leave">
+          <textarea id="text" maxlength="280" rows="3"
+                    placeholder="leave a story for the block…"></textarea>
+          <div class="row">
+            <span id="count" class="count"></span>
+            <button type="submit">leave it on the stoop</button>
+          </div>
+          <p id="msg" class="msg" role="status"></p>
+        </form>
+      </section>
+    </section>
+
+    <section id="view-murmur" class="view" hidden>
+      <div id="murmur" class="murmur" aria-live="polite"></div>
+      <p class="hint">The murmur is the weather of the block — what it keeps saying, what it holds onto.</p>
     </section>
 
     <footer>

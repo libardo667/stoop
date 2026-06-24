@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from . import config
+from . import config, murmur
 from .archive import JsonlArchive
 from .box import Box
 from .decay import DecayWeights
@@ -104,6 +105,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/entries":
             entries = [e.to_dict() for e in self.box.read()]
             self._send_json({"prompt": config.PROMPT, "entries": entries})
+            return
+        if path == "/murmur":
+            self._send_json(murmur.derive(self.box.read(), time.time()))
             return
         if path in STATIC:
             self._send_file(*STATIC[path])

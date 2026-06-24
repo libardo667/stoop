@@ -3,8 +3,10 @@
 const $ = (sel) => document.querySelector(sel);
 const MAX = 280;
 
-function ago(ts) {
-  const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+// --- time formatting ---
+
+function formatDuration(seconds) {
+  const s = Math.max(0, Math.floor(seconds));
   if (s < 60) return "just now";
   const m = Math.floor(s / 60);
   if (m < 60) return m + "m ago";
@@ -13,7 +15,24 @@ function ago(ts) {
   return Math.floor(h / 24) + "d ago";
 }
 
-function render(data) {
+function ago(ts) {
+  return formatDuration(Date.now() / 1000 - ts);
+}
+
+function formatSpan(seconds) {
+  const s = Math.max(0, Math.floor(seconds));
+  if (s < 60) return "moments";
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + (m === 1 ? " minute" : " minutes");
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + (h === 1 ? " hour" : " hours");
+  const d = Math.floor(h / 24);
+  return d + (d === 1 ? " day" : " days");
+}
+
+// --- the exchange ---
+
+function renderEntries(data) {
   $("#prompt").textContent = data.prompt;
   const wrap = $("#entries");
   wrap.innerHTML = "";
@@ -57,12 +76,12 @@ async function second(id) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id }),
   });
-  if (res.ok) await load();
+  if (res.ok) await loadExchange();
 }
 
-async function load() {
+async function loadExchange() {
   const res = await fetch("/entries");
-  render(await res.json());
+  renderEntries(await res.json());
 }
 
 function updateCount() {
@@ -88,16 +107,92 @@ async function leave(ev) {
     updateCount();
     msg.textContent = "left on the stoop. thanks for feeding the block ✨";
     $("#nudge").textContent = "the block thanks you.";
-    await load();
+    await loadExchange();
   } else {
     const err = await res.json().catch(() => ({}));
     msg.textContent = err.error ? "hmm — " + err.error : "something went wrong.";
   }
 }
 
+// --- the murmur ---
+
+function murmurHeadline(d) {
+  if (!d.count) return "The stoop is empty. Be the first to leave something.";
+  let mood;
+  if (d.newest_age < 3600) mood = "The block is lively";
+  else if (d.newest_age < 86400) mood = "The block is stirring";
+  else mood = "The block is quiet";
+  const n = d.count === 1 ? "one story" : d.count + " stories";
+  return `${mood} — ${n} on the stoop, the newest left ${formatDuration(d.newest_age)}.`;
+}
+
+function renderMurmur(d) {
+  const el = $("#murmur");
+  el.innerHTML = "";
+
+  const headline = document.createElement("p");
+  headline.className = "murmur-headline";
+  headline.textContent = murmurHeadline(d);
+  el.appendChild(headline);
+
+  if (d.threads && d.threads.length) {
+    const p = document.createElement("p");
+    p.className = "murmur-threads";
+    const label = document.createElement("span");
+    label.className = "murmur-label";
+    label.textContent = "on the block's mind: ";
+    p.appendChild(label);
+    p.appendChild(document.createTextNode(d.threads.map((t) => t[0]).join(" · ")));
+    el.appendChild(p);
+  }
+
+  if (d.holding) {
+    const p = document.createElement("p");
+    p.className = "murmur-holding";
+    const label = document.createElement("span");
+    label.className = "murmur-label";
+    label.textContent = "the block is holding onto: ";
+    const quote = document.createElement("em");
+    quote.textContent = "“" + d.holding.text + "”"; // textContent — untrusted
+    const kept = document.createElement("span");
+    kept.className = "murmur-keep";
+    kept.textContent = ` · kept ${d.holding.seconds}×`;
+    p.append(label, quote, kept);
+    el.appendChild(p);
+  }
+
+  if (d.oldest_age != null) {
+    const p = document.createElement("p");
+    p.className = "murmur-since";
+    p.textContent = `Something has rested here for ${formatSpan(d.oldest_age)}.`;
+    el.appendChild(p);
+  }
+}
+
+async function loadMurmur() {
+  const res = await fetch("/murmur");
+  renderMurmur(await res.json());
+}
+
+// --- tabs ---
+
+function showView(name) {
+  document.querySelectorAll(".view").forEach((v) => {
+    v.hidden = v.id !== "view-" + name;
+  });
+  document.querySelectorAll(".tab").forEach((t) => {
+    t.classList.toggle("is-active", t.dataset.view === name);
+  });
+  if (name === "murmur") loadMurmur();
+  else loadExchange();
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   $("#text").addEventListener("input", updateCount);
   $("#leave").addEventListener("submit", leave);
+  document.querySelectorAll(".tab").forEach((t) => {
+    t.addEventListener("click", () => showView(t.dataset.view));
+  });
   updateCount();
-  load();
+  loadExchange();
 });

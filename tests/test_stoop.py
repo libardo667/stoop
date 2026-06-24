@@ -17,7 +17,7 @@ from http.server import ThreadingHTTPServer
 # Make `import src...` work whether run via unittest discover or directly.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src import config  # noqa: E402
+from src import config, murmur  # noqa: E402
 from src.archive import JsonlArchive  # noqa: E402
 from src.box import Box  # noqa: E402
 from src.decay import DecayWeights, keep_score, pick_eviction  # noqa: E402
@@ -192,6 +192,52 @@ class BoxTests(unittest.TestCase):
         self.assertEqual(rows[0]["reason"], "composted")
 
 
+# --- the murmur (pure) ---
+
+class MurmurTests(unittest.TestCase):
+    def _e(self, eid, text, ts, seconds=0):
+        return Entry(id=eid, text=text, ts=ts, seconds=seconds)
+
+    def test_empty_is_quiet(self):
+        d = murmur.derive([], now=100)
+        self.assertEqual(d["count"], 0)
+        self.assertEqual(d["threads"], [])
+        self.assertIsNone(d["holding"])
+        self.assertIsNone(d["oldest_age"])
+
+    def test_threads_are_recurring_words_only(self):
+        entries = [
+            self._e("a", "the river is high today", ts=0),
+            self._e("b", "river rocks by the water", ts=10),
+            self._e("c", "a quiet morning", ts=20),
+        ]
+        d = murmur.derive(entries, now=20)
+        words = [t[0] for t in d["threads"]]
+        self.assertIn("river", words)       # said across two entries
+        self.assertNotIn("the", words)      # stopword
+        self.assertNotIn("morning", words)  # only one entry — not recurring
+        self.assertEqual(dict(d["threads"])["river"], 2)  # document frequency
+
+    def test_holding_is_the_most_kept(self):
+        entries = [
+            self._e("a", "plain", ts=0, seconds=0),
+            self._e("b", "beloved", ts=10, seconds=3),
+        ]
+        d = murmur.derive(entries, now=10)
+        self.assertEqual(d["holding"]["text"], "beloved")
+        self.assertEqual(d["holding"]["seconds"], 3)
+
+    def test_no_holding_when_nothing_is_kept(self):
+        d = murmur.derive([self._e("a", "x", ts=0)], now=0)
+        self.assertIsNone(d["holding"])
+
+    def test_ages_span_oldest_to_newest(self):
+        entries = [self._e("a", "old", ts=0), self._e("b", "new", ts=30)]
+        d = murmur.derive(entries, now=50)
+        self.assertEqual(d["oldest_age"], 50)
+        self.assertEqual(d["newest_age"], 20)
+
+
 # --- the server, end to end ---
 
 class ServerTests(unittest.TestCase):
@@ -217,6 +263,14 @@ class ServerTests(unittest.TestCase):
         conn.close()
         return status, payload
 
+    def _get(self, path):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        conn.request("GET", path)
+        resp = conn.getresponse()
+        status, payload = resp.status, resp.read()
+        conn.close()
+        return status, payload
+
     def test_normal_post_accepted(self):
         status, _ = self._post("/entries", json.dumps({"text": "hello block"}))
         self.assertEqual(status, 201)
@@ -237,6 +291,12 @@ class ServerTests(unittest.TestCase):
         status, payload = self._post("/second", json.dumps({"id": eid}))
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(payload)["seconds"], 1)
+
+    def test_murmur_route(self):
+        self._post("/entries", json.dumps({"text": "river rocks and rain"}))
+        status, payload = self._get("/murmur")
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(payload)["count"], 1)
 
 
 if __name__ == "__main__":

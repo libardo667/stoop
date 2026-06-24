@@ -22,7 +22,30 @@ body {
 main { max-width: 36rem; margin: 0 auto; padding: 1.25rem 1.1rem 3rem; }
 
 header h1 { margin: 0 0 .15rem; font-size: 1.5rem; letter-spacing: .02em; }
-.prompt { margin: 0 0 1.25rem; color: var(--accent); font-style: italic; }
+.prompt { margin: 0 0 .9rem; color: var(--accent); font-style: italic; }
+
+.tabs { display: flex; gap: .4rem; }
+.tab {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  padding: .3rem .85rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: .85rem;
+  cursor: pointer;
+}
+.tab.is-active { color: #fff; background: var(--accent); border-color: var(--accent); }
+.view { margin-top: 1.2rem; }
+
+.murmur { display: flex; flex-direction: column; gap: .85rem; }
+.murmur-headline { margin: 0; font-size: 1.08rem; line-height: 1.45; }
+.murmur-threads { margin: 0; line-height: 1.5; color: var(--accent); }
+.murmur-holding { margin: 0; line-height: 1.5; }
+.murmur-holding em { font-style: italic; }
+.murmur-label { color: var(--muted); }
+.murmur-keep { color: var(--muted); font-size: .85rem; }
+.murmur-since { margin: 0; color: var(--muted); font-size: .9rem; }
 
 .entries { display: flex; flex-direction: column; gap: .7rem; }
 .entry {

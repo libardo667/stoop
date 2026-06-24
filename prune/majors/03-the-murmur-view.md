@@ -1,5 +1,10 @@
 # The Murmur: an ambient portrait of what the block is saying
 
+> **Status: Shipped (2026-06-23).** `src/murmur.py` (pure derivation), `GET /murmur`, and a second
+> "murmur" tab in the portal. Reads as weather: what the block *keeps* saying (document frequency),
+> what it's *holding onto* (most-kept entry), and how long things have rested here. No deps, no AI —
+> cheap enough for the device. 25 tests green.
+
 ## Problem
 
 The Exchange shows individual entries; it doesn't show the *block*. The payoff a wooden box can't
@@ -22,10 +27,10 @@ tab/route in the portal.
 
 ## Acceptance Criteria
 
-- [ ] A second view renders a portrait derived only from current entries, computed locally.
-- [ ] It updates as entries come and go (and as decay turns the set over).
-- [ ] It reads as *about the neighborhood*, not as a dashboard, to a lay visitor.
-- [ ] Cheap enough to run within the ESP32 budget (no heavy deps).
+- [x] A second view renders a portrait derived only from current entries, computed locally.
+- [x] It updates as entries come and go (and as decay turns the set over).
+- [x] It reads as *about the neighborhood*, not as a dashboard, to a lay visitor.
+- [x] Cheap enough to run within the ESP32 budget (no heavy deps).
 
 ## Risks & Rollback
 
